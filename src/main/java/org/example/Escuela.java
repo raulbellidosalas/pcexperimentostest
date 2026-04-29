@@ -1,4 +1,5 @@
 package org.example;
+
 import java.time.LocalDate;
 import java.time.temporal.ChronoUnit;
 
@@ -54,6 +55,32 @@ class PeriodoAcademico {
     public String getNombre() { return nombre; }
 }
 
+interface PoliticaCostoMatricula {
+    double calcularCosto(Curso curso);
+}
+
+class PoliticaCostoMatriculaDefault implements PoliticaCostoMatricula {
+    @Override
+    public double calcularCosto(Curso curso) {
+        double costo = curso.getCreditos() * curso.getCostoPorCredito();
+        if (curso.getCreditos() >= 5) {
+            costo *= 0.95;
+        }
+        return costo;
+    }
+}
+
+interface PoliticaDevolucion {
+    double calcularDevolucion(double costoTotal);
+}
+
+class PoliticaDevolucionDefault implements PoliticaDevolucion {
+    @Override
+    public double calcularDevolucion(double costoTotal) {
+        return costoTotal * 0.70;
+    }
+}
+
 class Matricula {
     private Estudiante estudiante;
     private Curso curso;
@@ -63,18 +90,26 @@ class Matricula {
     private LocalDate fechaRetiro;
     private double costoTotal;
 
+    private final PoliticaCostoMatricula politicaCosto;
+    private final PoliticaDevolucion politicaDevolucion;
+
     public Matricula(Estudiante estudiante, Curso curso, PeriodoAcademico periodo) {
+        this(estudiante, curso, periodo, new PoliticaCostoMatriculaDefault(), new PoliticaDevolucionDefault());
+    }
+
+    public Matricula(Estudiante estudiante,
+                     Curso curso,
+                     PeriodoAcademico periodo,
+                     PoliticaCostoMatricula politicaCosto,
+                     PoliticaDevolucion politicaDevolucion) {
         this.estudiante = estudiante;
         this.curso = curso;
         this.periodo = periodo;
+        this.politicaCosto = politicaCosto;
+        this.politicaDevolucion = politicaDevolucion;
         this.fechaMatricula = LocalDate.now();
         this.estado = "Activa";
-
-        this.costoTotal = curso.getCreditos() * curso.getCostoPorCredito();
-
-        if (curso.getCreditos() >= 5) {
-            this.costoTotal = this.costoTotal * 0.95;
-        }
+        this.costoTotal = politicaCosto.calcularCosto(curso);
 
         System.out.println("Matrícula registrada para " + estudiante.getNombre() +
                 " en el curso " + curso.getNombre() +
@@ -89,8 +124,8 @@ class Matricula {
         if (diasDesdeMatricula <= 7) {
             this.estado = "Retirada";
             this.fechaRetiro = fechaRetiro;
-            System.out.println("Retiro realizado correctamente. Se aplicará devolución del 70%: S/"
-                    + (costoTotal * 0.70));
+            double devolucion = politicaDevolucion.calcularDevolucion(costoTotal);
+            System.out.println("Retiro realizado correctamente. Se aplicará devolución del 70%: S/" + devolucion);
         } else {
             System.out.println("No se puede retirar el curso. El retiro solo está permitido dentro de los primeros 7 días.");
         }
